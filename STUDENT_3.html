@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#050805] text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flask REST API — Student Microservice 3D Suite</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Three.js for 3D Visualizer -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            neon: {
+              green: '#00FF66',
+              light: '#66FF99',
+              dark: '#00B347',
+              glow: 'rgba(0, 255, 102, 0.4)'
+            },
+            obsidian: {
+              DEFAULT: '#050805',
+              card: '#0a0f0d',
+              border: '#14291b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #050805;
+      color: #ffffff;
+    }
+    code, pre, .font-mono {
+      font-family: 'Fira Code', monospace;
+    }
+
+    /* Custom Neon Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #050805; }
+    ::-webkit-scrollbar-thumb { background: #14291b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00FF66; }
+
+    /* Neon Green Glow Effects */
+    .neon-border {
+      border-color: #00FF66;
+      box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
+    }
+
+    .neon-glow-box {
+      box-shadow: 0 0 25px rgba(0, 255, 102, 0.15);
+    }
+
+    .neon-text-glow {
+      text-shadow: 0 0 10px rgba(0, 255, 102, 0.6);
+    }
+
+    /* Method Badges */
+    .badge-get { 
+      background-color: rgba(0, 255, 102, 0.12); 
+      color: #00FF66; 
+      border: 1px solid rgba(0, 255, 102, 0.4); 
+    }
+    .badge-post { 
+      background-color: rgba(255, 255, 255, 0.12); 
+      color: #FFFFFF; 
+      border: 1px solid rgba(255, 255, 255, 0.4); 
+    }
+
+    /* Glassmorphism Panels */
+    .glass-card {
+      background: rgba(10, 15, 13, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid #14291b;
+    }
+    .glass-card:hover {
+      border-color: rgba(0, 255, 102, 0.35);
+    }
+  </style>
+</head>
+
+<body class="bg-[#050805] text-white min-h-screen flex flex-col relative overflow-x-hidden">
+
+  <!-- Background Three.js Canvas -->
+  <div id="canvas-container" class="fixed inset-0 pointer-events-none z-0 opacity-40"></div>
+
+  <!-- Header Banner -->
+  <header class="relative z-10 sticky top-0 bg-[#050805]/90 backdrop-blur-md border-b border-obsidian-border">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-black border border-neon-green flex items-center justify-center text-neon-green font-mono font-bold text-lg neon-glow-box">
+          ⚡
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="text-[10px] font-bold font-mono tracking-widest uppercase text-neon-green neon-text-glow">REST API SYSTEM</span>
+            <span class="text-[10px] bg-neon-green/10 text-neon-green font-mono px-2 py-0.5 rounded border border-neon-green/30">v1.0.0</span>
+          </div>
+          <h1 class="font-bold text-white text-sm sm:text-base leading-tight tracking-wide">
+            Student Microservice — Flask & 3D Visualizer
+          </h1>
+        </div>
+      </div>
+
+      <!-- Quick Nav Buttons -->
+      <div class="flex items-center space-x-3 text-xs font-mono">
+        <button onclick="scrollToSection('code-section')" class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 bg-obsidian-card hover:border-neon-green text-slate-200 border border-obsidian-border rounded-lg transition">
+          <i data-lucide="code" class="w-3.5 h-3.5 text-neon-green"></i>
+          <span>Flask Source Code</span>
+        </button>
+
+        <button onclick="scrollToSection('tester-section')" class="flex items-center space-x-1.5 px-3.5 py-1.5 bg-neon-green hover:bg-neon-light text-black font-semibold rounded-lg transition shadow-lg shadow-neon-green/20">
+          <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
+          <span>Live API Tester</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Status Bar -->
+  <div class="relative z-10 bg-obsidian-card/60 border-b border-obsidian-border px-4 py-2 text-xs font-mono text-slate-400">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center space-x-4">
+        <span class="flex items-center space-x-1.5 text-neon-green font-semibold">
+          <span class="w-2 h-2 rounded-full bg-neon-green animate-ping"></span>
+          <span>FLASK SERVER: READY</span>
+        </span>
+        <span class="hidden md:inline text-obsidian-border">|</span>
+        <span class="hidden md:inline">HOST: <span class="text-white">http://127.0.0.1:5000</span></span>
+        <span class="hidden md:inline text-obsidian-border">|</span>
+        <span class="hidden md:inline">THEME: <span class="text-neon-green font-bold">NEON GREEN & WHITE</span></span>
+      </div>
+      
+      <div class="flex items-center space-x-3 text-[11px]">
+        <span class="text-slate-400">OPERATIONS: <strong class="text-white">GET, POST</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+
+    <!-- HERO 3D ARCHITECTURE CARD -->
+    <section class="glass-card rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-2xl border-neon-green/30">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        
+        <div class="lg:col-span-7 space-y-4">
+          <div class="flex items-center space-x-2">
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-neon-green/10 text-neon-green border border-neon-green/30 uppercase tracking-widest">
+              Flask 3.0 REST API Specification
+            </span>
+          </div>
+
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            Student Management REST Microservice
+          </h2>
+
+          <p class="text-sm text-slate-300 leading-relaxed">
+            A production-ready Flask REST API template implementing standard <code class="text-neon-green font-mono">GET</code> and <code class="text-white font-mono">POST</code> HTTP methods. Built with robust JSON request validation, query filter support, custom 404/400 error handling, dynamic responses, and instant testing capabilities.
+          </p>
+
+          <!-- Quick Metrics -->
+          <div class="grid grid-cols-3 gap-3 pt-2 text-xs font-mono">
+            <div class="bg-black/60 p-3 rounded-xl border border-obsidian-border text-center">
+              <div class="text-slate-400 text-[10px]">FRAMEWORK</div>
+              <div class="text-neon-green font-bold mt-1 text-sm">Python / Flask</div>
+            </div>
+            <div class="bg-black/60 p-3 rounded-xl border border-obsidian-border text-center">
+              <div class="text-slate-400 text-[10px]">METHODS</div>
+              <div class="text-white font-bold mt-1 text-sm">GET, POST</div>
+            </div>
+            <div class="bg-black/60 p-3 rounded-xl border border-obsidian-border text-center">
+              <div class="text-slate-400 text-[10px]">FORMAT</div>
+              <div class="text-neon-green font-bold mt-1 text-sm">application/json</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3D Node Canvas Hero Widget -->
+        <div class="lg:col-span-5 h-56 sm:h-64 rounded-xl border border-neon-green/30 bg-black/60 relative flex flex-col justify-between p-4 overflow-hidden shadow-inner">
+          <div class="flex items-center justify-between text-xs font-mono z-10">
+            <span class="text-neon-green font-bold flex items-center space-x-1.5">
+              <i data-lucide="box" class="w-4 h-4"></i>
+              <span>3D API TOPOLOGY NODE</span>
+            </span>
+            <span class="text-slate-400 text-[10px]">Rotate canvas with mouse</span>
+          </div>
+
+          <div class="z-10 bg-black/80 p-3 rounded-lg border border-obsidian-border text-xs font-mono space-y-1">
+            <div class="text-slate-400 text-[10px]">Active Mesh Nodes:</div>
+            <div class="text-neon-green">✦ GET /api/v1/students</div>
+            <div class="text-white">✦ POST /api/v1/students</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 1: FLASK SOURCE CODE & SETUP -->
+    <section id="code-section" class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="code-2" class="w-5 h-5 text-neon-green"></i>
+          <h3 class="text-lg font-bold text-white tracking-wide">1. Python Flask REST API Codebase</h3>
+        </div>
+        <span class="text-xs font-mono text-slate-400">Complete Self-Contained Script</span>
+      </div>
+
+      <!-- Code Viewer Window -->
+      <div class="bg-black rounded-2xl border border-obsidian-border overflow-hidden shadow-2xl">
+        <!-- File Tab Navigation -->
+        <div class="bg-obsidian-card border-b border-obsidian-border px-4 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex space-x-1 font-mono text-xs pt-2">
+            <button onclick="switchCodeTab('app')" id="tab-app" class="px-4 py-2 rounded-t-lg bg-black text-neon-green font-semibold border-t-2 border-neon-green border-x border-obsidian-border flex items-center space-x-2">
+              <i data-lucide="file-code" class="w-3.5 h-3.5"></i>
+              <span>app.py</span>
+            </button>
+            <button onclick="switchCodeTab('requirements')" id="tab-requirements" class="px-4 py-2 rounded-t-lg text-slate-400 hover:text-white flex items-center space-x-2">
+              <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+              <span>requirements.txt</span>
+            </button>
+            <button onclick="switchCodeTab('readme')" id="tab-readme" class="px-4 py-2 rounded-t-lg text-slate-400 hover:text-white flex items-center space-x-2">
+              <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+              <span>README.md</span>
+            </button>
+          </div>
+
+          <button onclick="copyCurrentCode()" class="my-2 px-3 py-1.5 bg-obsidian-card hover:bg-slate-900 text-white text-xs font-mono rounded-md border border-obsidian-border transition flex items-center space-x-1.5">
+            <i data-lucide="copy" class="w-3.5 h-3.5 text-neon-green"></i>
+            <span>Copy Code</span>
+          </button>
+        </div>
+
+        <!-- Code Content Block -->
+        <div class="p-6 overflow-x-auto max-h-[500px] font-mono text-xs leading-relaxed text-slate-200 bg-[#020402]">
+          <pre id="code-display"><code>// Loading Flask application source code...</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: INTERACTIVE LIVE API TESTER -->
+    <section id="tester-section" class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="terminal" class="w-5 h-5 text-neon-green"></i>
+          <h3 class="text-lg font-bold text-white tracking-wide">2. Live API Tester & Request Playground</h3>
+        </div>
+        <span class="text-xs font-mono text-neon-green flex items-center space-x-1">
+          <span class="w-2 h-2 rounded-full bg-neon-green animate-ping"></span>
+          <span>SIMULATED FLASK RUNTIME</span>
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Endpoint Selection Panel -->
+        <div class="lg:col-span-4 glass-card rounded-2xl p-5 space-y-4">
+          <div class="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">
+            Available Operations
+          </div>
+
+          <div class="space-y-2 font-mono text-xs">
+            
+            <!-- GET All Students -->
+            <button onclick="selectEndpoint('GET_ALL')" id="ep-btn-GET_ALL" class="w-full text-left p-3 rounded-xl border bg-neon-green/10 border-neon-green text-white transition flex flex-col space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-get">GET</span>
+                <span class="text-[10px] text-slate-400">Filter Support</span>
+              </div>
+              <div class="font-semibold text-neon-green">/api/v1/students</div>
+              <div class="text-[11px] text-slate-400 font-sans">Retrieve all student records or filter by course.</div>
+            </button>
+
+            <!-- GET Single Student -->
+            <button onclick="selectEndpoint('GET_BY_ID')" id="ep-btn-GET_BY_ID" class="w-full text-left p-3 rounded-xl border bg-black/60 border-obsidian-border text-slate-300 hover:border-neon-green/50 transition flex flex-col space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-get">GET</span>
+                <span class="text-[10px] text-slate-400">Path ID</span>
+              </div>
+              <div class="font-semibold text-neon-green">/api/v1/students/{id}</div>
+              <div class="text-[11px] text-slate-400 font-sans">Fetch specific student details by unique ID.</div>
+            </button>
+
+            <!-- POST Create Student -->
+            <button onclick="selectEndpoint('POST_CREATE')" id="ep-btn-POST_CREATE" class="w-full text-left p-3 rounded-xl border bg-black/60 border-obsidian-border text-slate-300 hover:border-neon-green/50 transition flex flex-col space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-post">POST</span>
+                <span class="text-[10px] text-slate-400">JSON Body</span>
+              </div>
+              <div class="font-semibold text-white">/api/v1/students</div>
+              <div class="text-[11px] text-slate-400 font-sans">Create new student with payload validation.</div>
+            </button>
+
+          </div>
+
+          <!-- Error Simulation Dropdown -->
+          <div class="pt-4 border-t border-obsidian-border space-y-3">
+            <div class="text-xs font-mono font-semibold text-slate-300 flex items-center justify-between">
+              <span>Simulation Controls</span>
+              <i data-lucide="sliders" class="w-3.5 h-3.5 text-neon-green"></i>
+            </div>
+
+            <div class="space-y-2 font-mono text-xs">
+              <label class="block text-slate-400 text-[11px]">Override Response Status:</label>
+              <select id="sim-error-override" onchange="runSimulatedRequest()" class="w-full bg-black border border-obsidian-border rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neon-green">
+                <option value="NONE">Standard Success (200 / 201)</option>
+                <option value="404">404 Not Found</option>
+                <option value="400">400 Bad Request (Validation Error)</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Interactive Playground Inspector -->
+        <div class="lg:col-span-8 glass-card rounded-2xl p-6 space-y-6">
+          
+          <!-- URL Input Bar -->
+          <div class="space-y-2">
+            <label class="block text-xs font-mono text-slate-400">Request Target</label>
+            <div class="flex flex-col sm:flex-row items-stretch gap-2">
+              <span id="tester-method-badge" class="px-3.5 py-2.5 rounded-lg font-mono font-bold text-xs badge-get flex items-center justify-center">
+                GET
+              </span>
+              <div class="relative flex-1">
+                <span class="absolute left-3 top-2.5 font-mono text-xs text-slate-500 select-none">http://127.0.0.1:5000</span>
+                <input type="text" id="tester-url-input" value="/api/v1/students" class="w-full bg-black border border-obsidian-border rounded-lg pl-44 pr-4 py-2 font-mono text-xs text-white focus:outline-none focus:border-neon-green">
+              </div>
+              <button onclick="runSimulatedRequest()" class="px-5 py-2.5 bg-neon-green hover:bg-neon-light text-black font-mono text-xs font-bold rounded-lg transition shadow-lg shadow-neon-green/20 flex items-center justify-center space-x-2">
+                <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                <span>Send Request</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- JSON Body Request Editor (Shown for POST) -->
+          <div id="request-payload-wrapper" class="hidden space-y-2">
+            <div class="flex items-center justify-between text-xs font-mono">
+              <span class="text-white font-semibold">Request Body (JSON)</span>
+              <button onclick="resetPayloadTemplate()" class="text-neon-green hover:underline">Reset Template</button>
+            </div>
+            <textarea id="tester-body-json" rows="6" class="w-full bg-black border border-obsidian-border rounded-xl p-4 font-mono text-xs text-neon-green focus:outline-none focus:border-neon-green leading-relaxed"></textarea>
+          </div>
+
+          <!-- Response Display -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs font-mono">
+              <span class="text-white font-semibold flex items-center space-x-2">
+                <i data-lucide="terminal-square" class="w-4 h-4 text-neon-green"></i>
+                <span>Response Output</span>
+              </span>
+
+              <div class="flex items-center space-x-3">
+                <span id="response-latency" class="text-slate-400 font-mono text-[11px]">Latency: 12ms</span>
+                <span id="response-status-badge" class="px-2.5 py-0.5 rounded font-mono font-bold text-[11px] bg-neon-green/10 text-neon-green border border-neon-green">
+                  200 OK
+                </span>
+              </div>
+            </div>
+
+            <div class="relative bg-black border border-obsidian-border rounded-xl p-4 overflow-x-auto min-h-[220px] max-h-[360px] font-mono text-xs">
+              <button onclick="copyResponseOutput()" class="absolute top-3 right-3 text-[10px] bg-obsidian-card hover:bg-slate-900 text-slate-300 px-2.5 py-1 rounded border border-obsidian-border font-mono transition">
+                Copy JSON
+              </button>
+              <pre id="tester-response-json"><code class="text-neon-green">// Click "Send Request" to test endpoint output...</code></pre>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 3: API VERIFICATION & cURL EXAMPLES -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="check-circle-2" class="w-5 h-5 text-neon-green"></i>
+          <h3 class="text-lg font-bold text-white tracking-wide">3. Testing & Verification Commands</h3>
+        </div>
+        <span class="text-xs font-mono text-slate-400">cURL & Postman Execution</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- GET Request cURL Card -->
+        <div class="glass-card rounded-2xl p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-get font-mono">GET</span>
+              <span class="text-xs font-semibold text-white font-mono">Fetch Students Request</span>
+            </div>
+            <button onclick="copyCurl('curl-get')" class="text-xs text-neon-green hover:underline font-mono flex items-center space-x-1">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>Copy</span>
+            </button>
+          </div>
+          <p class="text-xs text-slate-300">Execute GET request with optional course filter query parameter.</p>
+          <div class="bg-black p-3 rounded-lg border border-obsidian-border font-mono text-xs text-neon-green overflow-x-auto">
+            <code id="curl-get">curl -X GET "http://127.0.0.1:5000/api/v1/students?course=Computer+Science"</code>
+          </div>
+        </div>
+
+        <!-- POST Request cURL Card -->
+        <div class="glass-card rounded-2xl p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-post font-mono">POST</span>
+              <span class="text-xs font-semibold text-white font-mono">Create Student Record</span>
+            </div>
+            <button onclick="copyCurl('curl-post')" class="text-xs text-white hover:underline font-mono flex items-center space-x-1">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>Copy</span>
+            </button>
+          </div>
+          <p class="text-xs text-slate-300">Post new student JSON object to API endpoint.</p>
+          <div class="bg-black p-3 rounded-lg border border-obsidian-border font-mono text-xs text-white overflow-x-auto">
+            <code id="curl-post">curl -X POST "http://127.0.0.1:5000/api/v1/students" \<br>
+&nbsp;&nbsp;-H "Content-Type: application/json" \<br>
+&nbsp;&nbsp;-d '{"name":"Aria Vance","course":"Data Science","gpa":3.95,"email":"aria@university.edu"}'</code>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="relative z-10 bg-black border-t border-obsidian-border py-8 text-xs font-mono text-slate-500 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-2">
+        <span class="text-neon-green font-bold">⚡ FLASK REST API</span>
+        <span>— Student Management Microservice</span>
+      </div>
+      <div class="flex items-center space-x-4 text-slate-400">
+        <span>Python 3.11</span>
+        <span>•</span>
+        <span>Flask 3.0</span>
+        <span>•</span>
+        <span>Three.js 3D</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Python / Flask Source Code Files
+    const codeFiles = {
+      app: `# ==============================================================================
+# FLASK REST API — STUDENT MICROSERVICE
+# Language: Python 3.11+ | Framework: Flask 3.0+
+# File: app.py
+# Color Theme: Neon Green (#00FF66) & Clean White (#FFFFFF)
+# ==============================================================================
+
+from flask import Flask, jsonify, request
+
+app = Flask(__name__)
+
+# Sample in-memory student database
+STUDENTS = [
+    {
+        "id": 101,
+        "name": "Elena Rostova",
+        "course": "Computer Science",
+        "gpa": 3.92,
+        "email": "elena.rostova@university.edu",
+        "status": "Active"
+    },
+    {
+        "id": 102,
+        "name": "Marcus Vance",
+        "course": "Software Engineering",
+        "gpa": 3.84,
+        "email": "marcus.vance@university.edu",
+        "status": "Active"
+    },
+    {
+        "id": 103,
+        "name": "Taro Tanaka",
+        "course": "Data Science",
+        "gpa": 3.78,
+        "email": "taro.tanaka@university.edu",
+        "status": "Active"
+    }
+]
+
+def get_next_id():
+    """Generates the next sequential integer ID."""
+    return max([s["id"] for s in STUDENTS], default=100) + 1
+
+
+# ------------------------------------------------------------------------------
+# ROUTE 1: GET /api/v1/students (List all students / filter by course)
+# ------------------------------------------------------------------------------
+@app.route('/api/v1/students', methods=['GET'])
+def get_students():
+    """
+    Returns list of all students. Supports optional '?course=' query parameter.
+    """
+    course_filter = request.args.get('course')
+    
+    if course_filter:
+        filtered = [s for s in STUDENTS if s['course'].lower() == course_filter.lower()]
+        return jsonify({
+            "status": "success",
+            "count": len(filtered),
+            "data": filtered
+        }), 200
+
+    return jsonify({
+        "status": "success",
+        "count": len(STUDENTS),
+        "data": STUDENTS
+    }), 200
+
+
+# ------------------------------------------------------------------------------
+# ROUTE 2: GET /api/v1/students/<id> (Retrieve student by ID)
+# ------------------------------------------------------------------------------
+@app.route('/api/v1/students/<int:student_id>', methods=['GET'])
+def get_student_by_id(student_id):
+    """Retrieves a single student record matching student_id."""
+    student = next((s for s in STUDENTS if s["id"] == student_id), None)
+    
+    if not student:
+        return jsonify({
+            "status": "error",
+            "message": f"Student record with ID {student_id} not found."
+        }), 404
+        
+    return jsonify({
+        "status": "success",
+        "data": student
+    }), 200
+
+
+# ------------------------------------------------------------------------------
+# ROUTE 3: POST /api/v1/students (Create a new student record)
+# ------------------------------------------------------------------------------
+@app.route('/api/v1/students', methods=['POST'])
+def create_student():
+    """
+    Creates a new student record. Validates required JSON payload attributes.
+    """
+    payload = request.get_json()
+    
+    if not payload:
+        return jsonify({
+            "status": "error",
+            "message": "Invalid or missing JSON payload."
+        }), 400
+
+    required_fields = ["name", "course", "gpa"]
+    missing = [field for field in required_fields if field not in payload]
+
+    if missing:
+        return jsonify({
+            "status": "error",
+            "message": f"Missing required payload fields: {', '.join(missing)}"
+        }), 400
+
+    new_student = {
+        "id": get_next_id(),
+        "name": payload["name"],
+        "course": payload["course"],
+        "gpa": float(payload["gpa"]),
+        "email": payload.get("email", f"{payload['name'].lower().replace(' ', '.')}@university.edu"),
+        "status": payload.get("status", "Active")
+    }
+
+    STUDENTS.append(new_student)
+
+    return jsonify({
+        "status": "success",
+        "message": "Student record created successfully.",
+        "data": new_student
+    }), 201
+
+
+# Application Runner
+if __name__ == '__main__':
+    print("⚡ Starting Flask REST API Server on http://127.0.0.1:5000")
+    app.run(debug=True, host='127.0.0.1', port=5000)`,
+
+      requirements: `flask>=3.0.0
+pytest>=7.4.0
+requests>=2.31.0`,
+
+      readme: `# Student Management Flask REST API
+
+## Getting Started
+
+1. **Install Dependencies**:
+   \`\`\`bash
+   pip install -r requirements.txt
+   \`\`\`
+
+2. **Run Flask Server**:
+   \`\`\`bash
+   python app.py
+   \`\`\`
+
+3. **Verify Endpoints**:
+   - GET List: \`curl http://127.0.0.1:5000/api/v1/students\`
+   - POST Create: \`curl -X POST http://127.0.0.1:5000/api/v1/students -H "Content-Type: application/json" -d '{"name":"Aria Vance","course":"Data Science","gpa":3.95}'\``
+    };
+
+    let activeCodeTab = 'app';
+    let currentEndpointMode = 'GET_ALL';
+
+    // Mock Dataset
+    let mockStudents = [
+      { id: 101, name: "Elena Rostova", course: "Computer Science", gpa: 3.92, email: "elena.rostova@university.edu", status: "Active" },
+      { id: 102, name: "Marcus Vance", course: "Software Engineering", gpa: 3.84, email: "marcus.vance@university.edu", status: "Active" },
+      { id: 103, name: "Taro Tanaka", course: "Data Science", gpa: 3.78, email: "taro.tanaka@university.edu", status: "Active" }
+    ];
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initThreeJSScene();
+      renderCodeTab();
+      selectEndpoint('GET_ALL');
+    });
+
+    // --------------------------------------------------------------------------
+    // THREE.JS 3D BACKGROUND CANVAS SCENE
+    // --------------------------------------------------------------------------
+    function initThreeJSScene() {
+      const container = document.getElementById('canvas-container');
+      const scene = new THREE.Scene();
+
+      const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 24;
+
+      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
+
+      // Neon Green Icosahedron Geometry Node
+      const geometry = new THREE.IcosahedronGeometry(6, 1);
+      const wireframeMat = new THREE.MeshBasicMaterial({
+        color: 0x00FF66,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.35
+      });
+      const nodeMesh = new THREE.Mesh(geometry, wireframeMat);
+      scene.add(nodeMesh);
+
+      // White Inner Core Node
+      const coreGeo = new THREE.OctahedronGeometry(3, 0);
+      const coreMat = new THREE.MeshBasicMaterial({
+        color: 0xFFFFFF,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.6
+      });
+      const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+      scene.add(coreMesh);
+
+      // Floating Particle Grid
+      const particlesGeo = new THREE.BufferGeometry();
+      const count = 250;
+      const positions = new Float32Array(count * 3);
+
+      for (let i = 0; i < count * 3; i++) {
+        positions[i] = (Math.random() - 0.5) * 60;
+      }
+
+      particlesGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const particlesMat = new THREE.PointsMaterial({
+        size: 0.15,
+        color: 0x00FF66,
+        transparent: true,
+        opacity: 0.5
+      });
+      const particleSystem = new THREE.Points(particlesGeo, particlesMat);
+      scene.add(particleSystem);
+
+      // Mouse Drag Interaction Variables
+      let isDragging = false;
+      let previousMousePosition = { x: 0, y: 0 };
+
+      window.addEventListener('mousedown', () => isDragging = true);
+      window.addEventListener('mouseup', () => isDragging = false);
+      window.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+          const deltaX = e.clientX - previousMousePosition.x;
+          const deltaY = e.clientY - previousMousePosition.y;
+
+          nodeMesh.rotation.y += deltaX * 0.005;
+          nodeMesh.rotation.x += deltaY * 0.005;
+          coreMesh.rotation.y -= deltaX * 0.005;
+        }
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      });
+
+      // Animation Loop
+      function animate() {
+        requestAnimationFrame(animate);
+
+        nodeMesh.rotation.x += 0.002;
+        nodeMesh.rotation.y += 0.003;
+        coreMesh.rotation.x -= 0.003;
+        coreMesh.rotation.y -= 0.002;
+        particleSystem.rotation.y += 0.0005;
+
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    }
+
+    // Tab Switching for Code Viewer
+    function switchCodeTab(tab) {
+      activeCodeTab = tab;
+      const tabs = ['app', 'requirements', 'readme'];
+      
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if(t === tab) {
+          btn.className = "px-4 py-2 rounded-t-lg bg-black text-neon-green font-semibold border-t-2 border-neon-green border-x border-obsidian-border flex items-center space-x-2";
+        } else {
+          btn.className = "px-4 py-2 rounded-t-lg text-slate-400 hover:text-white flex items-center space-x-2";
+        }
+      });
+
+      renderCodeTab();
+    }
+
+    function renderCodeTab() {
+      const codeBox = document.getElementById('code-display');
+      codeBox.textContent = codeFiles[activeCodeTab];
+    }
+
+    // Endpoint Selector Logic
+    function selectEndpoint(mode) {
+      currentEndpointMode = mode;
+      const modes = ['GET_ALL', 'GET_BY_ID', 'POST_CREATE'];
+
+      modes.forEach(m => {
+        const btn = document.getElementById(`ep-btn-${m}`);
+        if(m === mode) {
+          btn.className = "w-full text-left p-3 rounded-xl border bg-neon-green/10 border-neon-green text-white transition flex flex-col space-y-1 shadow-lg shadow-neon-green/10";
+        } else {
+          btn.className = "w-full text-left p-3 rounded-xl border bg-black/60 border-obsidian-border text-slate-300 hover:border-neon-green/50 transition flex flex-col space-y-1";
+        }
+      });
+
+      const methodBadge = document.getElementById('tester-method-badge');
+      const urlInput = document.getElementById('tester-url-input');
+      const bodyWrapper = document.getElementById('request-payload-wrapper');
+
+      if(mode === 'GET_ALL') {
+        methodBadge.innerText = 'GET';
+        methodBadge.className = 'px-3.5 py-2.5 rounded-lg font-mono font-bold text-xs badge-get flex items-center justify-center';
+        urlInput.value = '/api/v1/students';
+        bodyWrapper.classList.add('hidden');
+      } else if (mode === 'GET_BY_ID') {
+        methodBadge.innerText = 'GET';
+        methodBadge.className = 'px-3.5 py-2.5 rounded-lg font-mono font-bold text-xs badge-get flex items-center justify-center';
+        urlInput.value = '/api/v1/students/101';
+        bodyWrapper.classList.add('hidden');
+      } else if (mode === 'POST_CREATE') {
+        methodBadge.innerText = 'POST';
+        methodBadge.className = 'px-3.5 py-2.5 rounded-lg font-mono font-bold text-xs badge-post flex items-center justify-center';
+        urlInput.value = '/api/v1/students';
+        bodyWrapper.classList.remove('hidden');
+        resetPayloadTemplate();
+      }
+
+      runSimulatedRequest();
+    }
+
+    function resetPayloadTemplate() {
+      document.getElementById('tester-body-json').value = JSON.stringify({
+        name: "Dr. Aria Vance",
+        course: "Quantum Computing",
+        gpa: 3.96,
+        email: "aria.vance@university.edu"
+      }, null, 2);
+    }
+
+    // Run Simulated HTTP Requests
+    function runSimulatedRequest() {
+      const errorOverride = document.getElementById('sim-error-override').value;
+      const statusBadge = document.getElementById('response-status-badge');
+      const latencyTag = document.getElementById('response-latency');
+      const responseBox = document.getElementById('tester-response-json');
+
+      const latency = Math.floor(Math.random() * 14) + 8;
+      latencyTag.innerText = `Latency: ${latency}ms`;
+
+      let responseObj;
+
+      if(errorOverride === '404') {
+        statusBadge.innerText = '404 NOT FOUND';
+        statusBadge.className = 'px-2.5 py-0.5 rounded font-mono font-bold text-[11px] bg-red-950 text-red-400 border border-red-800';
+        responseObj = { status: "error", message: "Student record with ID 999 not found." };
+      } else if (errorOverride === '400') {
+        statusBadge.innerText = '400 BAD REQUEST';
+        statusBadge.className = 'px-2.5 py-0.5 rounded font-mono font-bold text-[11px] bg-amber-950 text-amber-400 border border-amber-800';
+        responseObj = { status: "error", message: "Missing required payload fields: gpa" };
+      } else {
+        if(currentEndpointMode === 'GET_ALL') {
+          statusBadge.innerText = '200 OK';
+          statusBadge.className = 'px-2.5 py-0.5 rounded font-mono font-bold text-[11px] bg-neon-green/10 text-neon-green border border-neon-green';
+          responseObj = { status: "success", count: mockStudents.length, data: mockStudents };
+        } else if(currentEndpointMode === 'GET_BY_ID') {
+          statusBadge.innerText = '200 OK';
+          statusBadge.className = 'px-2.5 py-0.5 rounded font-mono font-bold text-[11px] bg-neon-green/10 text-neon-green border border-neon-green';
+          responseObj = { status: "success", data: mockStudents[0] };
+        } else if(currentEndpointMode === 'POST_CREATE') {
+          statusBadge.innerText = '201 CREATED';
+          statusBadge.className = 'px-2.5 py-0.5 rounded font-mono font-bold text-[11px] bg-white/10 text-white border border-white';
+
+          let parsedBody;
+          try {
+            parsedBody = JSON.parse(document.getElementById('tester-body-json').value);
+          } catch(e) {
+            parsedBody = { name: "Dr. Aria Vance", course: "Quantum Computing", gpa: 3.96, email: "aria.vance@university.edu" };
+          }
+
+          const newStudent = {
+            id: 104,
+            name: parsedBody.name || "Aria Vance",
+            course: parsedBody.course || "Data Science",
+            gpa: parseFloat(parsedBody.gpa) || 3.9,
+            email: parsedBody.email || "aria.vance@university.edu",
+            status: "Active"
+          };
+
+          responseObj = {
+            status: "success",
+            message: "Student record created successfully.",
+            data: newStudent
+          };
+        }
+      }
+
+      responseBox.textContent = JSON.stringify(responseObj, null, 2);
+    }
+
+    // Helper Copy Functions
+    function copyText(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+
+    function copyCurrentCode() {
+      copyText(codeFiles[activeCodeTab]);
+      alert(`Copied ${activeCodeTab} source code to clipboard.`);
+    }
+
+    function copyResponseOutput() {
+      copyText(document.getElementById('tester-response-json').textContent);
+      alert('Copied JSON response to clipboard.');
+    }
+
+    function copyCurl(elementId) {
+      const text = document.getElementById(elementId).innerText.replace(/\n\s*/g, ' ');
+      copyText(text);
+      alert('cURL command copied to clipboard.');
+    }
+
+    function scrollToSection(id) {
+      document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>
